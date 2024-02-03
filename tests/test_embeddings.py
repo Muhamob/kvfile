@@ -10,6 +10,7 @@ from kvfile.serialize import StructEmbeddingSerializer
 
 
 logger = logging.getLogger(__name__)
+serializers = ["struct", "numpy", "numpybuffer"]
 
 
 @pytest.fixture()
@@ -17,7 +18,7 @@ def serializer():
     return StructEmbeddingSerializer(dim=128, dtype=np.float32)
 
 
-@pytest.mark.parametrize("serializer", ["struct", "numpy"])
+@pytest.mark.parametrize("serializer", serializers)
 def test_smoke(tmpdir, serializer):
     emb_dim = 128
     dtype = np.float32
@@ -41,7 +42,7 @@ def test_smoke(tmpdir, serializer):
 
 @pytest.mark.parametrize("n_embedding", [100000])
 @pytest.mark.parametrize("dim", [128, 1024, 1536])
-@pytest.mark.parametrize("serializer", ["struct", "numpy"])
+@pytest.mark.parametrize("serializer", serializers)
 def test_set(tmpdir, n_embedding, dim, serializer):
     logger.info(f"n_embedding={n_embedding}, dim={dim}, serializer={serializer}")
     kvfile = EmbeddingsFile(

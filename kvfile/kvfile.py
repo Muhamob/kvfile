@@ -3,7 +3,11 @@ from functools import lru_cache
 
 import numpy as np
 
-from kvfile.serialize import NumpyEmbeddingsSerializer, StructEmbeddingSerializer
+from kvfile.serialize import (
+    NumpySaveEmbeddingsSerializer, 
+    StructEmbeddingSerializer,
+    NumpyToBytesEmbeddingsSerializer
+)
 
 
 class KVFileBase(ABC):
@@ -51,14 +55,16 @@ class EmbeddingsFile(KVFile):
         emb_dim: int,
         emb_dtype: type,
         n_cached_values: int | None = None,
-        serializer: str = "struct"
+        serializer: str = "numpybuffer"
     ):
         super().__init__(storage_path=storage_path, n_cached_values=n_cached_values)
 
         if serializer == "struct":
             self.serializer = StructEmbeddingSerializer(dim=emb_dim, dtype=emb_dtype)
         elif serializer == "numpy":
-            self.serializer = NumpyEmbeddingsSerializer()
+            self.serializer = NumpySaveEmbeddingsSerializer()
+        elif serializer == "numpybuffer":
+            self.serializer = NumpyToBytesEmbeddingsSerializer(emb_dtype)
         else:
             raise TypeError(f"{serializer} serializer not found")
 

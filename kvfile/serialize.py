@@ -15,8 +15,10 @@ class EmbeddingSerializer(ABC):
         pass
 
 
-class NumpyEmbeddingsSerializer(EmbeddingSerializer):
+class NumpySaveEmbeddingsSerializer(EmbeddingSerializer):
     def serialize(self, embedding: np.ndarray) -> bytes:
+        assert embedding.ndim == 1
+
         buffer = io.BytesIO()
         np.save(buffer, embedding)
         buffer.seek(0)
@@ -26,6 +28,19 @@ class NumpyEmbeddingsSerializer(EmbeddingSerializer):
     def deserialize(self, bytes_buffer: bytes) -> np.ndarray:
         return np.load(io.BytesIO(bytes_buffer))
     
+
+class NumpyToBytesEmbeddingsSerializer(EmbeddingSerializer):
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def serialize(self, embedding: np.ndarray) -> bytes:
+        assert embedding.ndim == 1
+
+        return embedding.tobytes()
+    
+    def deserialize(self, bytes_buffer: bytes) -> np.ndarray:
+        return np.frombuffer(bytes_buffer, self.dtype)
+
 
 class StructEmbeddingSerializer(EmbeddingSerializer):
     np2struct_dtype = {
