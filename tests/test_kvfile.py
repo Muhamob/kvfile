@@ -10,12 +10,6 @@ from kvfile.kvfile import KVFile
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(message)s',
-    # handlers=[logging.StreamHandler()]
-)
-logger.setLevel(logging.DEBUG)
 
 
 @pytest.fixture()
