@@ -26,6 +26,8 @@ a_hat = kvfile.get_embedding("1")
 
 # Benchmark
 
+On mac m1 pro 14 inch 16Gb
+
 ## Serialize
 ```python
 def serialize_io(a):
@@ -51,7 +53,10 @@ def serialize_struct(a):
 
 
 fmt = ">"+"f"*512
+```
 
+## Serialize + Deserialize
+```python
 def deserialize_struct(a):
     # 44.5 µs ± 70.7 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
     return np.array(struct.unpack(fmt, struct.pack(fmt, *a)))
@@ -71,4 +76,3 @@ def deserialize_io(a):
     buf = io.BytesIO(a_bytes)
     return np.load(buf)
 ```
-
