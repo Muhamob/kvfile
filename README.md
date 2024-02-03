@@ -1,4 +1,4 @@
-# KVFile - Key Value on file storage
+# KVFile - Key Value Storage on File
 - Key value хранилище с хранением данных на диске и кэшем для частотных ключей
 
 # Example
