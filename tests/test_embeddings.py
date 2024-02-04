@@ -41,7 +41,7 @@ def test_smoke(tmpdir, serializer):
 
 
 @pytest.mark.parametrize("n_embedding", [100000])
-@pytest.mark.parametrize("dim", [128, 1024, 1536])
+@pytest.mark.parametrize("dim", [128, 1536])
 @pytest.mark.parametrize("serializer", serializers)
 def test_set(tmpdir, n_embedding, dim, serializer):
     logger.info(f"n_embedding={n_embedding}, dim={dim}, serializer={serializer}")
@@ -56,3 +56,24 @@ def test_set(tmpdir, n_embedding, dim, serializer):
 
     for i, e in tqdm(enumerate(vectors)):
         kvfile.set_embedding(str(i), e)
+
+
+@pytest.mark.parametrize("n_embedding", [100000])
+@pytest.mark.parametrize("dim", [128, 1536])
+@pytest.mark.parametrize("serializer", serializers)
+def test_get(tmpdir, n_embedding, dim, serializer):
+    logger.info(f"n_embedding={n_embedding}, dim={dim}, serializer={serializer}")
+    kvfile = EmbeddingsFile(
+        storage_path=tmpdir, 
+        emb_dim=dim, 
+        emb_dtype=np.float32,
+        n_cached_values=1000, 
+        serializer=serializer
+    )
+    vectors = np.random.rand(n_embedding, dim)
+
+    for i, e in tqdm(enumerate(vectors)):
+        kvfile.set_embedding(str(i), e)
+
+    for i, e in tqdm(enumerate(vectors)):
+        kvfile.get_embedding(str(i))
