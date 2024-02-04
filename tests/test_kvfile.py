@@ -91,3 +91,17 @@ def test_get(n_reads, n_embedding, n_cache, tmpdir):
     logger.info("read values")
     for id_ in tqdm(idx):
         kvfile.get(id_)
+
+
+@pytest.mark.parametrize("n_cached_values", [None, 128])
+def test_set_update(tmpdir, n_cached_values):
+    kvfile = KVFile(storage_path=tmpdir, n_cached_values=n_cached_values)
+
+    kvfile.set("0", b'0')
+    kvfile.set("1", b'1')
+    # activate cache
+    kvfile.get("1")
+    # replace value
+    kvfile.set("1", b'2')
+
+    assert b'2' == kvfile.get("1")

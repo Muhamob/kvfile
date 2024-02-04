@@ -38,7 +38,15 @@ class EmbeddingsFile(KVFile):
             .make_serializer(serializer)
         )
         
-        self.__get_deserialize_cached_fn = lru_cache(maxsize=n_cached_values)(read_deserialize_value)
+        if n_cached_values is not None:
+            self.__get_deserialize_cached_fn = lru_cache(maxsize=n_cached_values)(read_deserialize_value)
+        else:
+            self.__get_deserialize_cached_fn = read_deserialize_value
+        self.cached = n_cached_values is not None
+
+    def clear_cache(self):
+        if self.cached:
+            self.__get_deserialize_cached_fn.cache_clear()
 
     def get_embedding(self, key: str) -> np.ndarray | None:
         return self.__get_deserialize_cached_fn(self.key2path(key), self.serializer)
@@ -46,6 +54,16 @@ class EmbeddingsFile(KVFile):
     def set_embedding(self, key: str, embedding: np.ndarray):
         bytes_array = self.serializer.serialize(embedding=embedding)
         self.set(key, bytes_array)
+
+    def get(self, key: str) -> bytes | None:
+        return read_value(self.key2path(key))
+
+    def set(self, key: str, value: bytes):
+        if os.path.exists(self.key2path(key)):
+            self.clear_cache()
+        
+        with open(self.key2path(key), "wb") as f:
+            f.write(value)
 
 
 def _embedding_file_bulk_read(path, position_in_file, emb_size) -> bytes | None:
@@ -76,6 +94,9 @@ class EmbeddingsFileBulk(KVFileBase):
         n_cached_values: int | None = None,
         n_embeddings_per_file: int = 1000
     ):
+        """
+        Key Value on Disk storage with n_embeddings_per_file embeddings (pair of key, value) in one file.
+        """
         self.storage_path = storage_path
 
         self.emb_dtype = emb_dtype
@@ -96,6 +117,10 @@ class EmbeddingsFileBulk(KVFileBase):
     def key2path(self, key: str) -> str:
         i = self.key2idx[key] // self.n_embeddings_per_file
         return self.storage_path + f"/{i}"
+    
+    def clear_cache(self):
+        if self.cached:
+            self.__embedding_file_bulk_read_cache.cache_clear()
     
     def _get_pos_in_file(self, key):
         return self.key2idx[key] % self.n_embeddings_per_file
@@ -118,8 +143,7 @@ class EmbeddingsFileBulk(KVFileBase):
         else:
             # update current file
             # TODO: find smart way to fix cache on key update
-            if self.cached:
-                self.__embedding_file_bulk_read_cache.cache_clear()
+            self.clear_cache()
             
             with open(path, "r+b") as f:
                 f.seek(self.emb_size * pos)
