@@ -5,9 +5,7 @@ import numpy as np
 from kvfile.serialize import (
     EmbeddingSerializer,
     EmbeddingSerializerFactory, 
-    NumpySaveEmbeddingsSerializer, 
-    NumpyToBytesEmbeddingsSerializer, 
-    StructEmbeddingSerializer
+    NumpyToBytesEmbeddingsSerializer
 )
 from kvfile.storage.base import KVFile, KVFileBase, read_value
 
@@ -47,6 +45,15 @@ class EmbeddingsFile(KVFile):
         self.set(key, bytes_array)
 
 
+def _embeddings_file_bulk_read(path, pos_in_file, emb_size) -> bytes | None:
+    try:
+        with open(path, "rb") as f:
+            f.seek(emb_size * pos_in_file)
+            return f.read(emb_size)
+    except FileNotFoundError as e:
+        return None
+
+
 class EmbeddingsFileBulk(KVFileBase):
     dtype2size = {
         np.int16: 2,
@@ -63,6 +70,7 @@ class EmbeddingsFileBulk(KVFileBase):
         storage_path: str,
         emb_dim: int, 
         emb_dtype: type, 
+        n_cached_values: int | None = None,
         n_embeddings_per_file: int = 1000
     ):
         self.storage_path = storage_path
@@ -76,18 +84,19 @@ class EmbeddingsFileBulk(KVFileBase):
         self.n_embeddings_per_file = n_embeddings_per_file
         self.key2idx = {}
 
+        if n_cached_values is None:
+            self.__embeddings_file_bulk_read_cache = _embeddings_file_bulk_read
+        else:
+            self.__embeddings_file_bulk_read_cache = lru_cache(maxsize=n_cached_values)(_embeddings_file_bulk_read)
+    
     def key2path(self, key: str) -> str:
         i = self.key2idx[key] // self.n_embeddings_per_file
         return self.storage_path + f"/{i}"
         
     def get(self, key: str) -> bytes | None:
-        try:
-            with open(self.key2path(key), "rb") as f:
-                pos_in_file = self.key2idx[key] % self.n_embeddings_per_file
-                f.seek(self.emb_size * pos_in_file)
-                return f.read(self.emb_size)
-        except FileNotFoundError as e:
-            return None
+        path = self.key2path(key)
+        pos_in_file = self.key2idx[key] % self.n_embeddings_per_file
+        return self.__embeddings_file_bulk_read_cache(path, pos_in_file=pos_in_file, emb_size=self.emb_size)
 
     def set(self, key: str, value: bytes):
         assert key not in self.key2idx

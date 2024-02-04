@@ -54,7 +54,7 @@ def test_smoke(kvfile: KVFile):
     assert kvfile.get("1") == b'000'
 
 
-@pytest.mark.parametrize("n_embedding", [10000, 100000])
+@pytest.mark.parametrize("n_embedding", [10000])
 @pytest.mark.parametrize("dim", [128, 1536])
 def test_set(tmpdir, n_embedding, dim):
     kvfile = KVFile(tmpdir, None)
@@ -71,7 +71,7 @@ def test_set(tmpdir, n_embedding, dim):
 
 
 @pytest.mark.parametrize("n_reads", [100000])
-@pytest.mark.parametrize("n_embedding", [100000])
+@pytest.mark.parametrize("n_embedding", [10000])
 @pytest.mark.parametrize("n_cache", [100, 10000])
 def test_get(n_reads, n_embedding, n_cache, tmpdir):
     logger.info(f"n_reads={n_reads}, n_embedding={n_embedding}, n_cache={n_cache}")

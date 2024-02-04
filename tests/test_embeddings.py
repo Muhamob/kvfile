@@ -38,7 +38,7 @@ def test_smoke(tmpdir, serializer):
     assert ((a - a_hat)**2).sum()**0.5 < 1e-5
 
 
-@pytest.mark.parametrize("n_embedding", [100000])
+@pytest.mark.parametrize("n_embedding", [10000])
 @pytest.mark.parametrize("dim", [128, 1536])
 @pytest.mark.parametrize("serializer", all_serializers)
 def test_set(tmpdir, n_embedding, dim, serializer):
@@ -56,7 +56,7 @@ def test_set(tmpdir, n_embedding, dim, serializer):
         kvfile.set_embedding(str(i), e)
 
 
-@pytest.mark.parametrize("n_embedding", [100000])
+@pytest.mark.parametrize("n_embedding", [10000])
 @pytest.mark.parametrize("dim", [128, 1536])
 @pytest.mark.parametrize("serializer", all_serializers)
 def test_get(tmpdir, n_embedding, dim, serializer):

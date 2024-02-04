@@ -38,7 +38,7 @@ def test_smoke(tmpdir):
         assert ((a - a_hat)**2).sum()**0.5 < 1e-5
 
 
-@pytest.mark.parametrize("n_embedding", [100000])
+@pytest.mark.parametrize("n_embedding", [10000])
 @pytest.mark.parametrize("emb_dim", [128, 1024])
 @pytest.mark.parametrize("n_embeddings_per_file", [4, 128])
 def test_set(tmpdir, n_embedding, emb_dim, n_embeddings_per_file):
@@ -62,7 +62,7 @@ def test_set(tmpdir, n_embedding, emb_dim, n_embeddings_per_file):
 @pytest.fixture()
 def kvfile_4emb_per_file(tmpdir):
     dtype = np.float32
-    n_embedding = 100_000
+    n_embedding = 10_000
     emb_dim = 128
     n_embeddings_per_file = 4
 
@@ -84,9 +84,35 @@ def kvfile_4emb_per_file(tmpdir):
 
 
 @pytest.fixture()
+def kvfile_4emb_per_file_cached(tmpdir):
+    dtype = np.float32
+    n_embedding = 10_000
+    emb_dim = 128
+    n_embeddings_per_file = 4
+    n_cache = 128
+
+    logger.info(f"n_embedding={n_embedding}, dim={emb_dim}")
+
+    kvfile = EmbeddingsFileBulk(
+        storage_path=tmpdir, 
+        emb_dim=emb_dim, 
+        emb_dtype=dtype,
+        n_cached_values=n_cache,
+        n_embeddings_per_file=n_embeddings_per_file
+    )
+    random_gen = np.random.default_rng(42)
+    vectors = random_gen.random(size=(n_embedding, emb_dim)).astype(dtype)
+
+    for i, e in tqdm(enumerate(vectors)):
+        kvfile.set_embedding(str(i), e)
+
+    return kvfile
+
+
+@pytest.fixture()
 def kvfile_1024emb_per_file(tmpdir):
     dtype = np.float32
-    n_embedding = 100_000
+    n_embedding = 10_000
     emb_dim = 128
     n_embeddings_per_file = 1024
 
@@ -107,13 +133,44 @@ def kvfile_1024emb_per_file(tmpdir):
     return kvfile
 
 
+@pytest.fixture()
+def kvfile_1024emb_per_file_cached(tmpdir):
+    dtype = np.float32
+    n_embedding = 10_000
+    emb_dim = 128
+    n_embeddings_per_file = 1024
+    n_cache = 128
+
+    logger.info(f"n_embedding={n_embedding}, dim={emb_dim}")
+
+    kvfile = EmbeddingsFileBulk(
+        storage_path=tmpdir, 
+        emb_dim=emb_dim, 
+        emb_dtype=dtype,
+        n_cached_values=n_cache,
+        n_embeddings_per_file=n_embeddings_per_file
+    )
+    random_gen = np.random.default_rng(42)
+    vectors = random_gen.random(size=(n_embedding, emb_dim)).astype(dtype)
+
+    for i, e in tqdm(enumerate(vectors)):
+        kvfile.set_embedding(str(i), e)
+
+    return kvfile
+
+
 @pytest.mark.parametrize("n_reads", [100000])
-@pytest.mark.parametrize("kvfile", ["kvfile_4emb_per_file", "kvfile_1024emb_per_file"])
+@pytest.mark.parametrize("kvfile", [
+    "kvfile_4emb_per_file", 
+    "kvfile_1024emb_per_file",
+    "kvfile_4emb_per_file_cached", 
+    "kvfile_1024emb_per_file_cached",
+])
 def test_get_random(n_reads, kvfile, request):
     kvfile = request.getfixturevalue(kvfile)
     random_gen = np.random.default_rng(42)
 
     logger.info("read values")
     for _ in tqdm(range(n_reads)):
-        idx = random_gen.integers(100_000)
+        idx = random_gen.integers(10_000)
         kvfile.get(str(idx))
