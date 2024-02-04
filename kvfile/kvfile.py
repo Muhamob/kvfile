@@ -4,6 +4,7 @@ from functools import lru_cache
 import numpy as np
 
 from kvfile.serialize import (
+    EmbeddingSerializer,
     NumpySaveEmbeddingsSerializer, 
     StructEmbeddingSerializer,
     NumpyToBytesEmbeddingsSerializer
@@ -38,14 +39,22 @@ class KVFile(KVFileBase):
         self.get_fn = lru_cache(maxsize=self.n_cached_values)(read_value)
 
     def key2path(self, key: str) -> str:
-        return key
+        return self.storage_path + f"/{key}"
 
     def get(self, key: str) -> bytes | None:
-        return self.get_fn(self.storage_path + f"/{self.key2path(key)}")
+        return self.get_fn(self.key2path(key))
 
     def set(self, key: str, value: bytes):
-        with open(self.storage_path + f"/{key}", "wb") as f:
+        with open(self.key2path(key), "wb") as f:
             f.write(value)
+
+
+def read_deserialize_value(path: str, serializer: EmbeddingSerializer) -> np.ndarray | None:
+    data = read_value(path=path)
+    if data is None:
+        return data
+    
+    return serializer.deserialize(data)
 
 
 class EmbeddingsFile(KVFile):
@@ -57,7 +66,7 @@ class EmbeddingsFile(KVFile):
         n_cached_values: int | None = None,
         serializer: str = "numpybuffer"
     ):
-        super().__init__(storage_path=storage_path, n_cached_values=n_cached_values)
+        self.storage_path = storage_path
 
         if serializer == "struct":
             self.serializer = StructEmbeddingSerializer(dim=emb_dim, dtype=emb_dtype)
@@ -67,14 +76,11 @@ class EmbeddingsFile(KVFile):
             self.serializer = NumpyToBytesEmbeddingsSerializer(emb_dtype)
         else:
             raise TypeError(f"{serializer} serializer not found")
+        
+        self.__get_deserialize_cached_fn = lru_cache(maxsize=n_cached_values)(read_deserialize_value)
 
     def get_embedding(self, key: str) -> np.ndarray | None:
-        bytes_array = self.get(key)
-        
-        if bytes_array is None:
-            return None
-        
-        return self.serializer.deserialize(bytes_array)
+        return self.__get_deserialize_cached_fn(self.key2path(key), self.serializer)
 
     def set_embedding(self, key: str, embedding: np.ndarray):
         bytes_array = self.serializer.serialize(embedding=embedding)

@@ -50,13 +50,11 @@ def serialize_struct(a):
     # 23.4 µs ± 56.9 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
     # size 512 * 4 = 2048
     return struct.pack(fmt, *a)
-
-
-fmt = ">"+"f"*512
 ```
 
 ## Serialize + Deserialize
 ```python
+fmt = ">"+"f"*512
 def deserialize_struct(a):
     # 44.5 µs ± 70.7 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
     return np.array(struct.unpack(fmt, struct.pack(fmt, *a)))
