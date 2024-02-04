@@ -1,4 +1,8 @@
-from .kvfile import KVFile, EmbeddingsFile
+from .storage.base import KVFile
+from .storage.embeddings import (
+    EmbeddingsFile,
+    EmbeddingsFileBulk
+)
 from .serialize import (
     NumpySaveEmbeddingsSerializer, 
     StructEmbeddingSerializer,

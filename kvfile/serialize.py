@@ -5,6 +5,9 @@ import struct
 import numpy as np
 
 
+all_serializers = ["np.save","np.tobytes", "struct"]
+
+
 class EmbeddingSerializer(ABC):
     @abstractmethod
     def serialize(self, embedding: np.ndarray) -> bytes:
@@ -13,6 +16,33 @@ class EmbeddingSerializer(ABC):
     @abstractmethod
     def deserialize(self, bytes_buffer: bytes) -> np.ndarray:
         pass
+
+
+class EmbeddingSerializerFactory:
+    def __init__(self):
+        self.emb_dim = None
+        self.dtype = None
+
+    def set_dim(self, emb_dim: int) -> 'EmbeddingSerializerFactory':
+        self.emb_dim = emb_dim
+        return self
+    
+    def set_dtype(self, dtype: type) -> 'EmbeddingSerializerFactory':
+        self.dtype = dtype
+        return self
+    
+    def make_serializer(self, serializer: str) -> EmbeddingSerializer:
+        if serializer == "np.save":
+            return NumpySaveEmbeddingsSerializer()
+        elif serializer == "np.tobytes":
+            assert self.dtype is not None
+            return NumpyToBytesEmbeddingsSerializer(dtype=self.dtype)
+        elif serializer == "struct":
+            assert self.dtype is not None
+            assert self.emb_dim is not None
+            return StructEmbeddingSerializer(dim=self.emb_dim, dtype=self.dtype)
+        else:
+            raise TypeError(f"{serializer} serializer not found")
 
 
 class NumpySaveEmbeddingsSerializer(EmbeddingSerializer):

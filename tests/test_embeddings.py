@@ -1,16 +1,14 @@
-import io
 import logging
 import pytest
 
 import numpy as np
 from tqdm import tqdm
 
-from kvfile.kvfile import EmbeddingsFile
-from kvfile.serialize import StructEmbeddingSerializer
+from kvfile import EmbeddingsFile
+from kvfile.serialize import StructEmbeddingSerializer, all_serializers
 
 
 logger = logging.getLogger(__name__)
-serializers = ["struct", "numpy", "numpybuffer"]
 
 
 @pytest.fixture()
@@ -18,7 +16,7 @@ def serializer():
     return StructEmbeddingSerializer(dim=128, dtype=np.float32)
 
 
-@pytest.mark.parametrize("serializer", serializers)
+@pytest.mark.parametrize("serializer", all_serializers)
 def test_smoke(tmpdir, serializer):
     emb_dim = 128
     dtype = np.float32
@@ -42,7 +40,7 @@ def test_smoke(tmpdir, serializer):
 
 @pytest.mark.parametrize("n_embedding", [100000])
 @pytest.mark.parametrize("dim", [128, 1536])
-@pytest.mark.parametrize("serializer", serializers)
+@pytest.mark.parametrize("serializer", all_serializers)
 def test_set(tmpdir, n_embedding, dim, serializer):
     logger.info(f"n_embedding={n_embedding}, dim={dim}, serializer={serializer}")
     kvfile = EmbeddingsFile(
@@ -60,7 +58,7 @@ def test_set(tmpdir, n_embedding, dim, serializer):
 
 @pytest.mark.parametrize("n_embedding", [100000])
 @pytest.mark.parametrize("dim", [128, 1536])
-@pytest.mark.parametrize("serializer", serializers)
+@pytest.mark.parametrize("serializer", all_serializers)
 def test_get(tmpdir, n_embedding, dim, serializer):
     logger.info(f"n_embedding={n_embedding}, dim={dim}, serializer={serializer}")
     kvfile = EmbeddingsFile(

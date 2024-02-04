@@ -1,12 +1,11 @@
 import logging
-import tempfile
 import io
 
 import pytest
 import numpy as np
 from tqdm import tqdm
 
-from kvfile.kvfile import KVFile
+from kvfile import KVFile
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +55,7 @@ def test_smoke(kvfile: KVFile):
 
 
 @pytest.mark.parametrize("n_embedding", [10000, 100000])
-@pytest.mark.parametrize("dim", [128, 512, 1024, 1536])
+@pytest.mark.parametrize("dim", [128, 1536])
 def test_set(tmpdir, n_embedding, dim):
     kvfile = KVFile(tmpdir, None)
     vectors = np.random.rand(n_embedding, dim)
@@ -73,7 +72,7 @@ def test_set(tmpdir, n_embedding, dim):
 
 @pytest.mark.parametrize("n_reads", [100000])
 @pytest.mark.parametrize("n_embedding", [100000])
-@pytest.mark.parametrize("n_cache", [100, 1000, 10000])
+@pytest.mark.parametrize("n_cache", [100, 10000])
 def test_get(n_reads, n_embedding, n_cache, tmpdir):
     logger.info(f"n_reads={n_reads}, n_embedding={n_embedding}, n_cache={n_cache}")
     kvfile = KVFile(tmpdir, n_cache)

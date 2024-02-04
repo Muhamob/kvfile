@@ -1,11 +1,10 @@
 import logging
-import pathlib
 import pytest
 
 import numpy as np
 from tqdm import tqdm
 
-from kvfile.kvfile import EmbeddingsFileBulk
+from kvfile import EmbeddingsFileBulk
 
 
 logger = logging.getLogger(__name__)
