@@ -280,3 +280,62 @@ def test_get_embedding_eq(tmpdir, n_cache):
 
     # check equal
     assert ((input_embeddings[ids] - read_embeddings)**2).sum() ** 0.5 < 1e-5
+
+
+@pytest.mark.parametrize("n_cache", [None, 128])
+def test_set_embedding_twice(tmpdir, n_cache):
+    # setup
+    dtype = np.float32
+    emb_dim = 128
+
+    logger.info(f"dim={emb_dim}, n_cache={n_cache}")
+
+    kvfile = EmbeddingsFileBulk(
+        storage_path=tmpdir, 
+        emb_dim=emb_dim, 
+        emb_dtype=dtype,
+        n_cached_values=n_cache,
+        n_embeddings_per_file=2
+    )
+
+    test_array = np.array(range(emb_dim)).astype(dtype)
+    # делаем фейковый первый вектор
+    kvfile.set_embedding("-1", test_array * 10000)
+    
+    kvfile.set_embedding("0", test_array)
+    kvfile.set_embedding("0", test_array * 10)
+
+    test_array_hat = kvfile.get_embedding("0")
+    assert test_array_hat is not None
+
+    assert np.abs(test_array_hat - test_array * 10).sum() < 1e-5
+
+
+@pytest.mark.parametrize("n_cache", [None, 128])
+def test_set_embedding_twice_with_get_interim(tmpdir, n_cache):
+    # проверяем, что кэш обновляется, когда перезаписываем вектор
+
+    # setup
+    dtype = np.float32
+    emb_dim = 128
+
+    logger.info(f"dim={emb_dim}, n_cache={n_cache}")
+
+    kvfile = EmbeddingsFileBulk(
+        storage_path=tmpdir, 
+        emb_dim=emb_dim, 
+        emb_dtype=dtype,
+        n_cached_values=n_cache,
+        n_embeddings_per_file=2
+    )
+
+    test_array = np.array(range(emb_dim)).astype(dtype)
+    kvfile.set_embedding("0", test_array)
+    kvfile.get_embedding("0")
+    kvfile.get_embedding("0")
+    kvfile.set_embedding("0", test_array * 10)
+
+    test_array_hat = kvfile.get_embedding("0")
+    assert test_array_hat is not None
+
+    assert np.abs(test_array_hat - test_array * 10).sum() < 1e-5

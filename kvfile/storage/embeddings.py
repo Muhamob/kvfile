@@ -1,5 +1,6 @@
 from functools import lru_cache
 from itertools import groupby
+import os
 from typing import Sequence
 
 import numpy as np
@@ -90,6 +91,7 @@ class EmbeddingsFileBulk(KVFileBase):
             self.__embedding_file_bulk_read_cache = _embedding_file_bulk_read
         else:
             self.__embedding_file_bulk_read_cache = lru_cache(maxsize=n_cached_values)(_embedding_file_bulk_read)
+        self.cached = n_cached_values is not None
     
     def key2path(self, key: str) -> str:
         i = self.key2idx[key] // self.n_embeddings_per_file
@@ -104,12 +106,24 @@ class EmbeddingsFileBulk(KVFileBase):
         return self.__embedding_file_bulk_read_cache(path, position_in_file=pos_in_file, emb_size=self.emb_size)
 
     def set(self, key: str, value: bytes):
-        assert key not in self.key2idx
-        
-        self.key2idx[key] = len(self.key2idx)
-        
-        with open(self.key2path(key), "ab") as f:
-            f.write(value)
+        self.key2idx[key] = self.key2idx.get(key, len(self.key2idx))
+
+        pos = self._get_pos_in_file(key=key)
+        path = self.key2path(key)
+
+        if (pos == 0) and (not os.path.exists(path)):
+            # create new file
+            with open(path, "wb") as f:
+                f.write(value)
+        else:
+            # update current file
+            # TODO: find smart way to fix cache on key update
+            if self.cached:
+                self.__embedding_file_bulk_read_cache.cache_clear()
+            
+            with open(path, "r+b") as f:
+                f.seek(self.emb_size * pos)
+                f.write(value)
     
     def get_embedding(self, key: str) -> np.ndarray | None:
         data = self.get(key=key)
@@ -136,7 +150,6 @@ class EmbeddingsFileBulk(KVFileBase):
                         f.seek(self.emb_size * pos)
                         result_embeddings.append(self.serializer.deserialize(f.read(self.emb_size)))
                         result_keys.append(key)
-
             except FileNotFoundError as e:
                 continue
         
