@@ -1,5 +1,6 @@
 from functools import lru_cache
 from itertools import groupby
+import json
 import os
 from typing import Sequence
 
@@ -44,6 +45,10 @@ class EmbeddingsFile(KVFile):
             self.__get_deserialize_cached_fn = read_deserialize_value
         self.cached = n_cached_values is not None
 
+        self.emb_dtype = emb_dtype
+        self.emb_dim = emb_dim
+        self.serializer_name = serializer
+
     def clear_cache(self):
         if self.cached:
             self.__get_deserialize_cached_fn.cache_clear()
@@ -65,6 +70,30 @@ class EmbeddingsFile(KVFile):
         with open(self.key2path(key), "wb") as f:
             f.write(value)
 
+    def dump(self):
+        with open(self.storage_path + "/metadata.json", "w") as f:
+            json.dump({
+                "emb_dtype": self.dtype2str[self.emb_dtype],
+                "emb_dim": self.emb_dim,
+                "n_cached_values": self.n_cached_values,
+                "serializer": self.serializer_name
+            }, f)
+
+    @classmethod
+    def load(cls, storage_path: str):
+        with open(storage_path + "/metadata.json", "r") as f:
+            data = json.load(f)
+
+        _cls = cls(
+            storage_path=storage_path, 
+            emb_dim=data["emb_dim"], 
+            emb_dtype=cls.str2dtype[data["emb_dtype"]], 
+            n_cached_values=data["n_cached_values"], 
+            serializer=data["serializer"]
+        )
+
+        return _cls
+
 
 def _embedding_file_bulk_read(path, position_in_file, emb_size) -> bytes | None:
     try:
@@ -76,16 +105,6 @@ def _embedding_file_bulk_read(path, position_in_file, emb_size) -> bytes | None:
 
 
 class EmbeddingsFileBulk(KVFileBase):
-    dtype2size = {
-        np.int16: 2,
-        np.int32: 4,
-        np.int64: 8,
-
-        np.float16: 2,
-        np.float32: 4,
-        np.float64: 8,
-    }
-
     def __init__(
         self, 
         storage_path: str,
@@ -108,6 +127,7 @@ class EmbeddingsFileBulk(KVFileBase):
         self.n_embeddings_per_file = n_embeddings_per_file
         self.key2idx = {}
 
+        self.n_cached_values = n_cached_values
         if n_cached_values is None:
             self.__embedding_file_bulk_read_cache = _embedding_file_bulk_read
         else:
@@ -116,7 +136,7 @@ class EmbeddingsFileBulk(KVFileBase):
     
     def key2path(self, key: str) -> str:
         i = self.key2idx[key] // self.n_embeddings_per_file
-        return self.storage_path + f"/{i}"
+        return self.storage_path + f"/{i}.data"
     
     def clear_cache(self):
         if self.cached:
@@ -129,6 +149,37 @@ class EmbeddingsFileBulk(KVFileBase):
         path = self.key2path(key)
         pos_in_file = self._get_pos_in_file(key)
         return self.__embedding_file_bulk_read_cache(path, position_in_file=pos_in_file, emb_size=self.emb_size)
+
+    def dump(self):
+        with open(self.storage_path + "/key2idx.json", "w") as f:
+            json.dump(self.key2idx, f)
+
+        with open(self.storage_path + "/metadata.json", "w") as f:
+            json.dump({
+                "emb_dtype": self.dtype2str[self.emb_dtype],
+                "emb_dim": self.emb_dim,
+                "n_cached_values": self.n_cached_values,
+                "n_embeddings_per_file": self.n_embeddings_per_file
+            }, f)
+
+    @classmethod
+    def load(cls, storage_path: str):
+        with open(storage_path + "/key2idx.json", "r") as f:
+            key2idx = json.load(f)
+
+        with open(storage_path + "/metadata.json", "r") as f:
+            data = json.load(f)
+
+        _cls = cls(
+            storage_path=storage_path, 
+            emb_dim=data["emb_dim"], 
+            emb_dtype=cls.str2dtype[data["emb_dtype"]], 
+            n_cached_values=data["n_cached_values"], 
+            n_embeddings_per_file=data["n_embeddings_per_file"]
+        )
+        _cls.key2idx = key2idx
+
+        return _cls
 
     def set(self, key: str, value: bytes):
         self.key2idx[key] = self.key2idx.get(key, len(self.key2idx))

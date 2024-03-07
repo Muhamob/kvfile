@@ -2,8 +2,31 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 import os
 
+import numpy as np
+
 
 class KVFileBase(ABC):
+    dtype2size = {
+        np.int16: 2,
+        np.int32: 4,
+        np.int64: 8,
+
+        np.float16: 2,
+        np.float32: 4,
+        np.float64: 8,
+    }
+
+    dtype2str = {
+        np.int16: "np.int16",
+        np.int32: "np.int32",
+        np.int64: "np.int64",
+
+        np.float16: "np.float16",
+        np.float32: "np.float32",
+        np.float64: "np.float64",
+    }
+    str2dtype = {v: k for k, v in dtype2str.items()}
+
     @abstractmethod
     def get(self, key: str) -> bytes | None:
         pass
